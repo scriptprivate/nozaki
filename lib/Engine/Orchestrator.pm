@@ -1,4 +1,4 @@
-package Engine::Orchestrator  {
+package Engine::Orchestrator {
     use strict;
     use threads;
     use warnings;
@@ -13,19 +13,19 @@ package Engine::Orchestrator  {
         for (1 .. $number) {
             return unless (@{$list} > 0);
 
-            if (eof($list -> [0])) {
+            if (eof($list->[0])) {
                 close shift @{$list};
 
-                (@{$list} > 0) || $wordlist_queue -> end();
+                (@{$list} > 0) || $wordlist_queue->end();
 
-                next
+                next;
             }
 
-            my $filehandle = $list -> [0];
+            my $filehandle = $list->[0];
 
             chomp(my $line = <$filehandle>);
 
-            $wordlist_queue -> enqueue($line);
+            $wordlist_queue->enqueue($line);
         }
     }
 
@@ -51,7 +51,7 @@ package Engine::Orchestrator  {
                 $target = shift @targets_queue;
             }
 
-            $self -> threaded_fuzz($target, %options);
+            $self->threaded_fuzz($target, %options);
         }
     }
 
@@ -60,18 +60,17 @@ package Engine::Orchestrator  {
 
         my @current = map {
             open(my $filehandle, "<$_") || die "$0: Can't open $_: $!";
-
             $filehandle
         } glob($options{wordlist});
 
-        $wordlist_queue = Thread::Queue -> new();
+        $wordlist_queue = Thread::Queue->new();
 
         use constant CONCURRENT_TASKS => 10;
 
         fill_queue(\@current, CONCURRENT_TASKS * $options{tasks});
 
         for (1 .. $options{tasks}) {
-            Engine::FuzzerThread -> new (
+            Engine::FuzzerThread->new(
                 $wordlist_queue,
                 $target,
                 $options{method},
@@ -80,7 +79,7 @@ package Engine::Orchestrator  {
                 $options{accept},
                 $options{timeout},
                 $options{return},
-                $options{payload},
+                $options{data} || $options{payload},
                 $options{json},
                 $options{delay},
                 $options{exclude},
@@ -89,15 +88,18 @@ package Engine::Orchestrator  {
                 $options{content},
                 $options{proxy},
                 $options{report_to},
-                $options{report_format}
+                $options{report_format},
+                $options{fuzz},
+                $options{format},
+                $options{wordlist}
             );
         }
 
-        while (threads -> list(threads::running) > 0) {
+        while (threads->list(threads::running) > 0) {
             fill_queue(\@current, $options{tasks});
         }
 
-        map { $_ -> join() } threads -> list(threads::all);
+        map { $_->join() } threads->list(threads::all);
 
         return 0;
     }

@@ -22,7 +22,10 @@ sub main {
         timeout  => 10,
         agent    => "Nozaki / 0.3.0",
         tasks    => 30,
-        delay    => 0
+        delay    => 0,
+        fuzz     => "",
+        format   => "urlencoded",
+        data     => ""
     );
 
     Getopt::Long::GetOptions (
@@ -31,7 +34,7 @@ sub main {
         "c|content=s"      => \$options{content},
         "d|delay=i"        => \$options{delay},
         "e|exclude=s"      => \$options{exclude},
-        "H|header=s%"      => \$options{headers},
+        "H|header=s"       => sub { my ($opt, $value) = @_; my ($k, $v) = split(/:/, $value, 2); $options{headers}->{$k} = $v ? $v : ""; },
         "w|wordlist=s"     => \$options{wordlist},
         "W|workflow=s"     => \$workflow,
         "m|method=s"       => \$options{method},
@@ -45,22 +48,25 @@ sub main {
         "l|length=s"       => \$options{length},
         "P|proxy=s"        => \$options{proxy},
         "report-to=s"      => \$options{report_to},
-        "report-format=s"  => \$options{report_format}
+        "report-format=s"  => \$options{report_format},
+        "fuzz=s"           => \$options{fuzz},
+        "format=s"         => \$options{format},
+        "data=s"           => \$options{data}  
     );
 
-    return Functions::Helper -> new() unless @targets;
+    return Functions::Helper->new() unless @targets;
 
     if ($workflow) {
-        my $rules = Functions::Parser -> new($workflow);
+        my $rules = Functions::Parser->new($workflow);
 
         for my $rule (@$rules) {
             my %new_options = %options;
 
             Engine::Orchestrator::add_target(@targets);
 
-            map { $new_options{$_} = $rule -> {$_} || 1 } keys %{$rule};
+            map { $new_options{$_} = $rule->{$_} || 1 } keys %{$rule};
 
-            Engine::Orchestrator -> run_fuzzer(%new_options);
+            Engine::Orchestrator->run_fuzzer(%new_options);
         }
 
         return 0;
@@ -68,7 +74,7 @@ sub main {
 
     Engine::Orchestrator::add_target(@targets);
 
-    return Engine::Orchestrator -> run_fuzzer(%options);
+    return Engine::Orchestrator->run_fuzzer(%options);
 }
 
 exit main() unless caller;
